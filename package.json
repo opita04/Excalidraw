@@ -1,5 +1,5 @@
 {
-  "name": "excalidraw-app",
+  "name": "drawing-app",
   "version": "1.0.0",
   "description": "Excalidraw with Vercel Blob storage",
   "private": true,
