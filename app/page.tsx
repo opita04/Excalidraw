@@ -151,13 +151,15 @@ export default function Home() {
 							transition: 'background-color 0.2s ease'
 						}}
 						onMouseEnter={(e) => {
+							const target = e.target as HTMLButtonElement
 							if (!isSaving && excalidrawAPI) {
-								e.target.style.background = '#2563eb'
+								target.style.background = '#2563eb'
 							}
 						}}
 						onMouseLeave={(e) => {
+							const target = e.target as HTMLButtonElement
 							if (!isSaving && excalidrawAPI) {
-								e.target.style.background = '#3b82f6'
+								target.style.background = '#3b82f6'
 							}
 						}}
 					>
@@ -177,13 +179,15 @@ export default function Home() {
 							transition: 'background-color 0.2s ease'
 						}}
 						onMouseEnter={(e) => {
+							const target = e.target as HTMLButtonElement
 							if (excalidrawAPI) {
-								e.target.style.background = '#059669'
+								target.style.background = '#059669'
 							}
 						}}
 						onMouseLeave={(e) => {
+							const target = e.target as HTMLButtonElement
 							if (excalidrawAPI) {
-								e.target.style.background = '#10b981'
+								target.style.background = '#10b981'
 							}
 						}}
 					>
