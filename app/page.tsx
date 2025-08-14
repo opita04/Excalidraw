@@ -2,7 +2,6 @@
 
 import dynamic from 'next/dynamic'
 import { useEffect, useState, useCallback } from 'react'
-import { ExcalidrawAPIRefValue } from '@excalidraw/excalidraw/types/types'
 
 const Excalidraw = dynamic(
 	async () => {
@@ -13,7 +12,7 @@ const Excalidraw = dynamic(
 )
 
 export default function Home() {
-	const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawAPIRefValue | null>(null)
+	const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null)
 	const [isSaving, setIsSaving] = useState(false)
 	const [isNavCollapsed, setIsNavCollapsed] = useState(false)
 
