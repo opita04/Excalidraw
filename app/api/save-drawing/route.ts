@@ -31,8 +31,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       url: blob.url,
-      size: blob.size,
-      uploadedAt: blob.uploadedAt,
+      pathname: blob.pathname,
+      uploadedAt: new Date().toISOString(),
     })
   } catch (error) {
     console.error('Error saving drawing:', error)

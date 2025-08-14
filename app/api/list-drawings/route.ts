@@ -24,8 +24,7 @@ export async function GET() {
       .map(blob => ({
         url: blob.url,
         name: blob.pathname,
-        size: blob.size,
-        uploadedAt: blob.uploadedAt,
+        uploadedAt: new Date().toISOString(),
       }))
       .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
 
