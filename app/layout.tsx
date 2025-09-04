@@ -9,6 +9,10 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
 	title: 'Excalidraw with Vercel Blob',
 	description: 'Excalidraw drawing app with cloud storage',
+	icons: {
+		icon: '/favicon.svg',
+		shortcut: '/favicon.svg',
+	},
 }
 
 export default function RootLayout({
@@ -17,7 +21,7 @@ export default function RootLayout({
 	children: React.ReactNode
 }) {
 	return (
-		<html lang="en">
+		<html lang="en" suppressHydrationWarning>
 			<head>
 				<Script id="excalidraw-asset-path" strategy="beforeInteractive">
 					{`window["EXCALIDRAW_ASSET_PATH"] = "/";`}
