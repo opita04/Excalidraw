@@ -122,7 +122,7 @@ export default function DrawingList({ theme, onLoadDrawing, onDrawingDeleted, on
         justifyContent: 'center',
         alignItems: 'center',
         height: '50vh',
-        color: theme === 'dark' ? '#f9fafb' : '#111827'
+        color: 'var(--color-on-surface)'
       }}>
         Loading drawings...
       </div>
@@ -136,7 +136,7 @@ export default function DrawingList({ theme, onLoadDrawing, onDrawingDeleted, on
       margin: '0 auto'
     }}>
       <h2 style={{
-        color: theme === 'dark' ? '#f9fafb' : '#111827',
+        color: 'var(--color-on-surface)',
         marginBottom: '20px',
         fontSize: '24px',
         fontWeight: 'bold'
@@ -148,10 +148,10 @@ export default function DrawingList({ theme, onLoadDrawing, onDrawingDeleted, on
         <div style={{
           textAlign: 'center',
           padding: '40px',
-          color: theme === 'dark' ? '#9ca3af' : '#6b7280',
-          background: theme === 'dark' ? '#1f2937' : '#f9fafb',
+          color: 'var(--color-gray-50)',
+          background: 'var(--color-surface-mid)',
           borderRadius: '8px',
-          border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`
+          border: `1px solid var(--color-border-outline)`
         }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎨</div>
           <div>No drawings found</div>
@@ -167,21 +167,21 @@ export default function DrawingList({ theme, onLoadDrawing, onDrawingDeleted, on
         }}>
           {drawings.map((drawing) => (
             <div key={drawing.url} style={{
-              background: theme === 'dark' ? '#1f2937' : '#ffffff',
-              border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
+              background: 'var(--color-surface-lowest)',
+              border: `1px solid var(--color-border-outline)`,
               borderRadius: '8px',
               overflow: 'hidden',
-              boxShadow: theme === 'dark' ? '0 4px 6px rgba(0, 0, 0, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.1)',
+              boxShadow: '0px 0px 0.9310142993927002px 0px rgba(0, 0, 0, 0.17), 0px 0px 3.1270833015441895px 0px rgba(0, 0, 0, 0.08), 0px 7px 14px 0px rgba(0, 0, 0, 0.05)',
               transition: 'transform 0.2s ease, box-shadow 0.2s ease'
             }}>
               {/* Drawing Preview Placeholder */}
               <div style={{
                 height: '150px',
-                background: theme === 'dark' ? '#374151' : '#f3f4f6',
+                background: 'var(--color-surface-mid)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: theme === 'dark' ? '#9ca3af' : '#6b7280',
+                color: 'var(--color-gray-50)',
                 fontSize: '14px'
               }}>
                 🎨 Drawing Preview
@@ -199,10 +199,10 @@ export default function DrawingList({ theme, onLoadDrawing, onDrawingDeleted, on
                       style={{
                         width: '100%',
                         padding: '8px',
-                        border: `1px solid ${theme === 'dark' ? '#4b5563' : '#d1d5db'}`,
+                        border: `1px solid var(--color-border-outline)`,
                         borderRadius: '4px',
-                        background: theme === 'dark' ? '#374151' : '#ffffff',
-                        color: theme === 'dark' ? '#f9fafb' : '#111827',
+                        background: 'var(--color-surface-mid)',
+                        color: 'var(--color-on-surface)',
                         marginBottom: '8px'
                       }}
                     />
@@ -211,8 +211,8 @@ export default function DrawingList({ theme, onLoadDrawing, onDrawingDeleted, on
                         onClick={() => handleRename(drawing)}
                         style={{
                           padding: '6px 12px',
-                          background: '#10b981',
-                          color: '#fff',
+                          background: 'var(--color-primary)',
+                          color: 'var(--color-surface-lowest)',
                           border: 'none',
                           borderRadius: '4px',
                           cursor: 'pointer',
@@ -225,9 +225,9 @@ export default function DrawingList({ theme, onLoadDrawing, onDrawingDeleted, on
                         onClick={cancelRename}
                         style={{
                           padding: '6px 12px',
-                          background: theme === 'dark' ? '#374151' : '#f3f4f6',
-                          color: theme === 'dark' ? '#f9fafb' : '#374151',
-                          border: `1px solid ${theme === 'dark' ? '#4b5563' : '#d1d5db'}`,
+                          background: 'var(--color-surface-mid)',
+                          color: 'var(--color-on-surface)',
+                          border: `1px solid var(--color-border-outline)`,
                           borderRadius: '4px',
                           cursor: 'pointer',
                           fontSize: '12px'
@@ -240,7 +240,7 @@ export default function DrawingList({ theme, onLoadDrawing, onDrawingDeleted, on
                 ) : (
                   <div>
                     <h3 style={{
-                      color: theme === 'dark' ? '#f9fafb' : '#111827',
+                      color: 'var(--color-on-surface)',
                       fontSize: '16px',
                       fontWeight: '600',
                       margin: '0 0 8px 0',
@@ -249,7 +249,7 @@ export default function DrawingList({ theme, onLoadDrawing, onDrawingDeleted, on
                       {drawing.name.replace('.excalidraw', '').replace(/-/g, ' ')}
                     </h3>
                     <p style={{
-                      color: theme === 'dark' ? '#9ca3af' : '#6b7280',
+                      color: 'var(--color-gray-60)',
                       fontSize: '12px',
                       margin: '0 0 12px 0'
                     }}>
@@ -264,8 +264,8 @@ export default function DrawingList({ theme, onLoadDrawing, onDrawingDeleted, on
                     onClick={() => onLoadDrawing(drawing)}
                     style={{
                       padding: '8px 16px',
-                      background: '#3b82f6',
-                      color: '#fff',
+                      background: 'var(--color-primary)',
+                      color: 'var(--color-surface-lowest)',
                       border: 'none',
                       borderRadius: '4px',
                       cursor: 'pointer',
@@ -282,9 +282,9 @@ export default function DrawingList({ theme, onLoadDrawing, onDrawingDeleted, on
                       onClick={() => startRename(drawing)}
                       style={{
                         padding: '8px 16px',
-                        background: theme === 'dark' ? '#374151' : '#f3f4f6',
-                        color: theme === 'dark' ? '#f9fafb' : '#374151',
-                        border: `1px solid ${theme === 'dark' ? '#4b5563' : '#d1d5db'}`,
+                        background: 'var(--color-surface-mid)',
+                        color: 'var(--color-on-surface)',
+                        border: `1px solid var(--color-border-outline)`,
                         borderRadius: '4px',
                         cursor: 'pointer',
                         fontSize: '14px'
@@ -299,8 +299,8 @@ export default function DrawingList({ theme, onLoadDrawing, onDrawingDeleted, on
                     disabled={deletingId === drawing.url}
                     style={{
                       padding: '8px 16px',
-                      background: '#ef4444',
-                      color: '#fff',
+                      background: 'var(--color-danger)',
+                      color: 'var(--color-surface-lowest)',
                       border: 'none',
                       borderRadius: '4px',
                       cursor: deletingId === drawing.url ? 'not-allowed' : 'pointer',

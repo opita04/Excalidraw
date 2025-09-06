@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { put } from '@vercel/blob'
+import { put, del } from '@vercel/blob'
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,12 +21,24 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData()
     const file = formData.get('file') as File
-    
+    const existingUrl = formData.get('existingUrl') as string
+
     if (!file) {
       return NextResponse.json(
         { error: 'No file provided' },
         { status: 400 }
       )
+    }
+
+    // If updating an existing drawing, delete the old one first
+    if (existingUrl) {
+      try {
+        console.log('save-drawing: Deleting existing drawing:', existingUrl)
+        await del(existingUrl)
+      } catch (deleteError) {
+        console.warn('save-drawing: Failed to delete existing drawing:', deleteError)
+        // Continue with save even if delete fails
+      }
     }
 
     console.log('save-drawing: Uploading file:', file.name, 'Size:', file.size)
@@ -53,7 +65,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       url: blob.url,
       pathname: blob.pathname,
-      uploadedAt: blob.uploadedAt || new Date().toISOString(),
+      uploadedAt: new Date().toISOString(),
     })
   } catch (error) {
     console.error('Error saving drawing:', error)

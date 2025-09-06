@@ -9,7 +9,7 @@ const Excalidraw = dynamic(
 		const { Excalidraw } = await import('@excalidraw/excalidraw')
 		return Excalidraw
 	},
-	{ ssr: false }
+	{ ssr: false, loading: () => <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh'}}>Loading Excalidraw...</div> }
 )
 
 export default function Home() {
@@ -22,6 +22,7 @@ export default function Home() {
 	const [drawingName, setDrawingName] = useState('')
 	const [saveDialogError, setSaveDialogError] = useState('')
 	const [isMounted, setIsMounted] = useState(false)
+	const [currentDrawing, setCurrentDrawing] = useState<{ name: string; url: string } | null>(null)
 
 	useEffect(() => {
 		// Mark component as mounted to enable client-side features
@@ -49,6 +50,51 @@ export default function Home() {
 		}
 	}, [theme, isMounted])
 
+	// Handle changes from Excalidraw to sync theme and detect cleared canvas
+	const handleExcalidrawChange = useCallback((elements: any, appState: any) => {
+		if (appState.theme && appState.theme !== theme) {
+			// Update our theme state to match Excalidraw's theme
+			setTheme(appState.theme)
+			// Update document theme attribute
+			document.documentElement.setAttribute('data-theme', appState.theme)
+			// Save to localStorage
+			if (isMounted) {
+				localStorage.setItem('excalidraw-theme', appState.theme)
+			}
+		}
+
+		// Clear current drawing if scene becomes empty (e.g., after Reset)
+		if (Array.isArray(elements) && elements.length === 0 && currentDrawing) {
+			setCurrentDrawing(null)
+		}
+	}, [theme, isMounted, excalidrawAPI, currentDrawing])
+
+	// Manual theme toggle function
+	const toggleTheme = useCallback(() => {
+		if (excalidrawAPI) {
+			const newTheme = theme === 'light' ? 'dark' : 'light'
+			try {
+				const currentAppState = excalidrawAPI.getAppState()
+				excalidrawAPI.updateScene({
+					elements: excalidrawAPI.getSceneElements(),
+					appState: {
+						...currentAppState,
+						theme: newTheme
+					}
+				})
+				
+				// Update our app state
+				setTheme(newTheme)
+				document.documentElement.setAttribute('data-theme', newTheme)
+				if (isMounted) {
+					localStorage.setItem('excalidraw-theme', newTheme)
+				}
+			} catch (error) {
+				console.warn('Could not toggle theme:', error)
+			}
+		}
+	}, [theme, excalidrawAPI, isMounted])
+
 	useEffect(() => {
 		// Basic diagnostics to confirm mount
 		console.log('ExcalidrawAPI set?', Boolean(excalidrawAPI))
@@ -56,10 +102,11 @@ export default function Home() {
 
 	const showSaveDrawingDialog = useCallback(() => {
 		if (!excalidrawAPI) return
-		setDrawingName('')
+		// Pre-fill with current drawing name if one is loaded, otherwise empty
+		setDrawingName(currentDrawing ? currentDrawing.name.replace('.excalidraw', '') : '')
 		setSaveDialogError('')
 		setShowSaveDialog(true)
-	}, [excalidrawAPI])
+	}, [excalidrawAPI, currentDrawing])
 
 	const validateDrawingName = (name: string): string | null => {
 		if (!name.trim()) {
@@ -91,24 +138,26 @@ export default function Home() {
 			setShowSaveDialog(false)
 			const elements = excalidrawAPI.getSceneElements()
 			const appState = excalidrawAPI.getAppState()
-			
+
 			// Ensure theme is preserved in appState
 			// Create scene data in the exact format Excalidraw expects for .excalidraw files
 			// Clean the appState to ensure proper serialization
 			const cleanAppState = {
 				...appState,
 				theme: theme,
+				// Preserve the current background color instead of forcing theme-based colors
+				viewBackgroundColor: appState.viewBackgroundColor || '#ffffff',
 				// Remove or fix problematic fields that don't serialize well
 				collaborators: undefined, // Remove collaborators as it's a Map and doesn't serialize
 			}
-			
+
 			// Remove undefined values
 			Object.keys(cleanAppState).forEach(key => {
 				if (cleanAppState[key] === undefined) {
 					delete cleanAppState[key]
 				}
 			})
-			
+
 			const sceneData = {
 				type: 'excalidraw',
 				version: 2,
@@ -119,30 +168,43 @@ export default function Home() {
 			}
 
 			const jsonData = JSON.stringify(sceneData)
-			
+
 			const blob = new Blob([jsonData], { type: 'application/json' })
 			const formData = new FormData()
 			// Use the custom name instead of timestamp
 			const cleanName = drawingName.trim().replace(/[^a-zA-Z0-9\s\-_]/g, '').replace(/\s+/g, '-')
 			formData.append('file', blob, `${cleanName}.excalidraw`)
+
+			// If this is an update to an existing drawing, include the existing URL for the API to handle
+			if (currentDrawing && currentDrawing.name === `${cleanName}.excalidraw`) {
+				formData.append('existingUrl', currentDrawing.url)
+			}
+
 			const response = await fetch('/api/save-drawing', { method: 'POST', body: formData })
 			if (!response.ok) throw new Error('Failed to save drawing')
 			const result = await response.json()
+
+			// Update current drawing info if this was a new save or name change
+			if (!currentDrawing || currentDrawing.name !== `${cleanName}.excalidraw`) {
+				setCurrentDrawing({ name: `${cleanName}.excalidraw`, url: result.url })
+			}
+
 			console.log('Drawing saved:', result.url)
-			alert(`Drawing "${drawingName.trim()}" saved successfully!`)
+			alert(`${currentDrawing ? 'Drawing updated' : 'Drawing saved'}: "${drawingName.trim()}" ${currentDrawing ? 'updated' : 'saved'} successfully!`)
 		} catch (error) {
 			console.error('Error saving drawing:', error)
 			alert('Failed to save drawing')
 		} finally {
 			setIsSaving(false)
 		}
-	}, [excalidrawAPI, drawingName, theme])
+	}, [excalidrawAPI, drawingName, theme, currentDrawing])
 
 	const cancelSaveDialog = useCallback(() => {
 		setShowSaveDialog(false)
 		setDrawingName('')
 		setSaveDialogError('')
 	}, [])
+
 
 	const loadDrawing = useCallback(async () => {
 		if (!excalidrawAPI) return
@@ -177,7 +239,7 @@ export default function Home() {
 				const loadAppState = {
 					...drawingData.appState,
 					theme: savedTheme,
-					collaborators: new Map() // Recreate collaborators as Map
+					collaborators: new Map()
 				}
 				
 				excalidrawAPI.updateScene({
@@ -185,6 +247,9 @@ export default function Home() {
 					appState: loadAppState
 				})
 				
+				// Set current drawing info
+				setCurrentDrawing({ name: data[0].name, url: data[0].url })
+
 				// Small delay to ensure the scene is updated, then fit to view
 				setTimeout(() => {
 					try {
@@ -193,7 +258,7 @@ export default function Home() {
 						console.warn('Could not zoom to fit content:', zoomError)
 					}
 				}, 100)
-				
+
 				alert('Drawing loaded successfully!')
 			} else {
 				console.log('No drawings found in response')
@@ -231,13 +296,16 @@ export default function Home() {
 			const loadAppState = {
 				...drawingData.appState,
 				theme: savedTheme,
-				collaborators: new Map() // Recreate collaborators as Map
+				collaborators: new Map()
 			}
 
 			excalidrawAPI.updateScene({
 				elements: drawingData.elements || [],
 				appState: loadAppState
 			})
+
+			// Set current drawing info
+			setCurrentDrawing({ name: drawing.name, url: drawing.url })
 
 			// Switch to canvas view to show the loaded drawing
 			setViewMode('canvas')
@@ -250,7 +318,7 @@ export default function Home() {
 					console.warn('Could not zoom to fit content:', zoomError)
 				}
 			}, 100)
-			
+
 			alert(`Drawing "${drawing.name.replace('.excalidraw', '')}" loaded successfully!`)
 		} catch (error) {
 			console.error('Error loading drawing:', error)
@@ -279,18 +347,31 @@ export default function Home() {
 				}}>
 					<Excalidraw
 						excalidrawAPI={(api) => setExcalidrawAPI(api)}
-						initialData={{ appState: { viewBackgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff', theme: theme } }}
+						initialData={{ 
+							appState: { 
+								theme: theme 
+							} 
+						}}
+						theme={theme}
+						onChange={handleExcalidrawChange}
 					/>
 				</div>
 				
 				{/* Show DrawingList when in list mode */}
 				{viewMode === 'list' && (
-					<DrawingList
-						theme={theme}
-						onLoadDrawing={handleLoadDrawing}
-						onDrawingDeleted={handleDrawingDeleted}
-						onDrawingRenamed={handleDrawingRenamed}
-					/>
+					<div style={{
+						height: '100%',
+						width: '100%',
+						background: 'var(--color-surface-lowest)',
+						minHeight: '100vh'
+					}}>
+						<DrawingList
+							theme={theme}
+							onLoadDrawing={handleLoadDrawing}
+							onDrawingDeleted={handleDrawingDeleted}
+							onDrawingRenamed={handleDrawingRenamed}
+						/>
+					</div>
 				)}
 			</div>
 			
@@ -300,9 +381,9 @@ export default function Home() {
 				bottom: 0,
 				left: 0,
 				right: 0,
-				background: theme === 'dark' ? '#1f2937' : '#fff',
-				borderTop: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
-				boxShadow: theme === 'dark' ? '0 -4px 6px -1px rgba(0, 0, 0, 0.3)' : '0 -4px 6px -1px rgba(0, 0, 0, 0.1)',
+					background: 'var(--color-surface-lowest)',
+					borderTop: '1px solid var(--color-border-outline)',
+					boxShadow: '0px 100px 80px rgba(0, 0, 0, 0.07), 0px 41.7776px 33.4221px rgba(0, 0, 0, 0.0503198), 0px 22.3363px 17.869px rgba(0, 0, 0, 0.0417275), 0px 12.5216px 10.0172px rgba(0, 0, 0, 0.035), 0px 6.6501px 5.32008px rgba(0, 0, 0, 0.0282725), 0px 2.76726px 2.21381px rgba(0, 0, 0, 0.0196802)',
 				transition: 'transform 0.3s ease-in-out',
 				transform: isNavCollapsed ? 'translateY(100%)' : 'translateY(0)',
 				zIndex: 1000
@@ -313,32 +394,34 @@ export default function Home() {
 					top: '-40px',
 					left: '50%',
 					transform: 'translateX(-50%)',
-					background: theme === 'dark' ? '#1f2937' : '#fff',
-					border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
+					background: 'var(--color-surface-lowest)',
+					borderTop: '1px solid var(--color-border-outline)',
+					borderLeft: '1px solid var(--color-border-outline)',
+					borderRight: '1px solid var(--color-border-outline)',
 					borderBottom: 'none',
 					borderRadius: '8px 8px 0 0',
 					padding: '8px 16px',
 					cursor: 'pointer',
-					boxShadow: theme === 'dark' ? '0 -2px 4px rgba(0, 0, 0, 0.3)' : '0 -2px 4px rgba(0, 0, 0, 0.1)'
+					boxShadow: '0px 15px 6px rgba(0, 0, 0, 0.01), 0px 8px 5px rgba(0, 0, 0, 0.05), 0px 4px 4px rgba(0, 0, 0, 0.09), 0px 1px 2px rgba(0, 0, 0, 0.1), 0px 0px 0px rgba(0, 0, 0, 0.1)'
 				}} onClick={() => setIsNavCollapsed(!isNavCollapsed)}>
 					<div style={{
 						width: '20px',
 						height: '2px',
-						background: theme === 'dark' ? '#9ca3af' : '#6b7280',
+						background: 'var(--color-gray-60)',
 						margin: '2px 0',
 						transition: 'transform 0.3s ease'
 					}}></div>
 					<div style={{
 						width: '20px',
 						height: '2px',
-						background: theme === 'dark' ? '#9ca3af' : '#6b7280',
+						background: 'var(--color-gray-60)',
 						margin: '2px 0',
 						transition: 'transform 0.3s ease'
 					}}></div>
 					<div style={{
 						width: '20px',
 						height: '2px',
-						background: theme === 'dark' ? '#9ca3af' : '#6b7280',
+						background: 'var(--color-gray-60)',
 						margin: '2px 0',
 						transition: 'transform 0.3s ease'
 					}}></div>
@@ -356,52 +439,73 @@ export default function Home() {
 					<h1 style={{
 						fontSize: '18px',
 						fontWeight: '700',
-						color: theme === 'dark' ? '#f9fafb' : '#111827',
+						color: 'var(--color-on-surface)',
 						margin: 0
 					}}>Excalidraw with Vercel Blob</h1>
 
 					<button
 						onClick={() => setViewMode(viewMode === 'canvas' ? 'list' : 'canvas')}
 						style={{
-							padding: '8px 16px',
-							background: viewMode === 'canvas' ? '#3b82f6' : '#10b981',
-							color: '#fff',
-							border: 'none',
-							borderRadius: '6px',
+							display: 'flex',
+							justifyContent: 'center',
+							alignItems: 'center',
+							padding: '0.5rem 0.75rem',
+							backgroundColor: 'var(--color-surface-mid)',
+							color: 'var(--color-primary)',
+							border: `1px solid var(--color-primary)`,
+							borderRadius: '0.5rem',
 							cursor: 'pointer',
-							transition: 'background-color 0.2s ease',
-							fontWeight: '500'
+							transition: 'all 0.2s ease',
+							fontSize: '0.75rem',
+							fontWeight: '500',
+							boxSizing: 'border-box',
+							height: '2.25rem',
+							boxShadow: '0px 0px 0.9310142993927002px 0px rgba(0, 0, 0, 0.17), 0px 0px 3.1270833015441895px 0px rgba(0, 0, 0, 0.08), 0px 7px 14px 0px rgba(0, 0, 0, 0.05)',
+							textDecoration: 'none'
 						}}
 						onMouseEnter={(e) => {
 							const target = e.target as HTMLButtonElement
-							target.style.background = viewMode === 'canvas' ? '#2563eb' : '#059669'
+							target.style.backgroundColor = 'var(--color-primary)'
+							target.style.color = 'var(--color-surface-lowest)'
 						}}
 						onMouseLeave={(e) => {
 							const target = e.target as HTMLButtonElement
-							target.style.background = viewMode === 'canvas' ? '#3b82f6' : '#10b981'
+							target.style.backgroundColor = 'var(--color-surface-mid)'
+							target.style.color = 'var(--color-primary)'
 						}}
 					>
 						{viewMode === 'canvas' ? '📁 My Drawings' : '🎨 Canvas'}
 					</button>
 
 					<button
-						onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+						onClick={toggleTheme}
 						style={{
-							padding: '8px 16px',
-							background: theme === 'dark' ? '#374151' : '#f3f4f6',
-							color: theme === 'dark' ? '#f9fafb' : '#374151',
-							border: `1px solid ${theme === 'dark' ? '#4b5563' : '#d1d5db'}`,
-							borderRadius: '6px',
+							display: 'flex',
+							justifyContent: 'center',
+							alignItems: 'center',
+							padding: '0.5rem 0.75rem',
+							backgroundColor: 'var(--color-surface-mid)',
+							color: 'var(--color-primary)',
+							border: `1px solid var(--color-primary)`,
+							borderRadius: '0.5rem',
 							cursor: 'pointer',
-							transition: 'background-color 0.2s ease'
+							transition: 'all 0.2s ease',
+							fontSize: '0.75rem',
+							fontWeight: '500',
+							boxSizing: 'border-box',
+							height: '2.25rem',
+							boxShadow: '0px 0px 0.9310142993927002px 0px rgba(0, 0, 0, 0.17), 0px 0px 3.1270833015441895px 0px rgba(0, 0, 0, 0.08), 0px 7px 14px 0px rgba(0, 0, 0, 0.05)',
+							textDecoration: 'none'
 						}}
 						onMouseEnter={(e) => {
 							const target = e.target as HTMLButtonElement
-							target.style.background = theme === 'dark' ? '#4b5563' : '#e5e7eb'
+							target.style.backgroundColor = 'var(--color-primary)'
+							target.style.color = 'var(--color-surface-lowest)'
 						}}
 						onMouseLeave={(e) => {
 							const target = e.target as HTMLButtonElement
-							target.style.background = theme === 'dark' ? '#374151' : '#f3f4f6'
+							target.style.backgroundColor = 'var(--color-surface-mid)'
+							target.style.color = 'var(--color-primary)'
 						}}
 					>
 						{theme === 'light' ? '🌙 Dark' : '☀️ Light'}
@@ -409,56 +513,78 @@ export default function Home() {
 					{viewMode === 'canvas' && (
 						<>
 												<button
-						onClick={showSaveDrawingDialog}
-						disabled={isSaving || !excalidrawAPI}
-						style={{
-							padding: '8px 16px',
-							background: theme === 'dark' ? '#3b82f6' : '#3b82f6',
-							color: '#fff',
-							border: 'none',
-							borderRadius: '6px',
-							cursor: 'pointer',
-							opacity: (isSaving || !excalidrawAPI) ? 0.5 : 1,
-							transition: 'background-color 0.2s ease'
-						}}
-						onMouseEnter={(e) => {
-							const target = e.target as HTMLButtonElement
-							if (!isSaving && excalidrawAPI) {
-								target.style.background = theme === 'dark' ? '#1e40af' : '#2563eb'
-							}
-						}}
-						onMouseLeave={(e) => {
-							const target = e.target as HTMLButtonElement
-							if (!isSaving && excalidrawAPI) {
-								target.style.background = '#3b82f6'
-							}
-						}}
-					>
-						{isSaving ? 'Saving...' : 'Save Drawing'}
-					</button>
+							onClick={showSaveDrawingDialog}
+							disabled={isSaving || !excalidrawAPI}
+							style={{
+								display: 'flex',
+								justifyContent: 'center',
+								alignItems: 'center',
+								padding: '0.5rem 0.75rem',
+								backgroundColor: 'var(--color-surface-mid)',
+								color: 'var(--color-primary)',
+								border: `1px solid var(--color-primary)`,
+								borderRadius: '0.5rem',
+								cursor: (isSaving || !excalidrawAPI) ? 'not-allowed' : 'pointer',
+								opacity: (isSaving || !excalidrawAPI) ? 0.5 : 1,
+								transition: 'all 0.2s ease',
+								fontSize: '0.75rem',
+								fontWeight: '500',
+								boxSizing: 'border-box',
+								height: '2.25rem',
+								boxShadow: '0px 0px 0.9310142993927002px 0px rgba(0, 0, 0, 0.17), 0px 0px 3.1270833015441895px 0px rgba(0, 0, 0, 0.08), 0px 7px 14px 0px rgba(0, 0, 0, 0.05)',
+								textDecoration: 'none'
+							}}
+							onMouseEnter={(e) => {
+								const target = e.target as HTMLButtonElement
+								if (!isSaving && excalidrawAPI) {
+									target.style.backgroundColor = 'var(--color-primary)'
+									target.style.color = 'var(--color-surface-lowest)'
+								}
+							}}
+							onMouseLeave={(e) => {
+								const target = e.target as HTMLButtonElement
+								if (!isSaving && excalidrawAPI) {
+									target.style.backgroundColor = 'var(--color-surface-mid)'
+									target.style.color = 'var(--color-primary)'
+								}
+							}}
+						>
+							{isSaving ? 'Saving...' : (currentDrawing ? 'Update Drawing' : 'Save Drawing')}
+						</button>
 							<button
 								onClick={loadDrawing}
 								disabled={!excalidrawAPI}
 								style={{
-									padding: '8px 16px',
-									background: theme === 'dark' ? '#059669' : '#10b981',
-									color: '#fff',
-									border: 'none',
-									borderRadius: '6px',
-									cursor: 'pointer',
+									display: 'flex',
+									justifyContent: 'center',
+									alignItems: 'center',
+									padding: '0.5rem 0.75rem',
+									backgroundColor: 'var(--color-surface-mid)',
+									color: 'var(--color-primary)',
+									border: `1px solid var(--color-primary)`,
+									borderRadius: '0.5rem',
+									cursor: !excalidrawAPI ? 'not-allowed' : 'pointer',
 									opacity: !excalidrawAPI ? 0.5 : 1,
-									transition: 'background-color 0.2s ease'
+									transition: 'all 0.2s ease',
+									fontSize: '0.75rem',
+									fontWeight: '500',
+									boxSizing: 'border-box',
+									height: '2.25rem',
+									boxShadow: '0px 0px 0.9310142993927002px 0px rgba(0, 0, 0, 0.17), 0px 0px 3.1270833015441895px 0px rgba(0, 0, 0, 0.08), 0px 7px 14px 0px rgba(0, 0, 0, 0.05)',
+									textDecoration: 'none'
 								}}
 								onMouseEnter={(e) => {
 									const target = e.target as HTMLButtonElement
 									if (excalidrawAPI) {
-										target.style.background = theme === 'dark' ? '#047857' : '#059669'
+										target.style.backgroundColor = 'var(--color-primary)'
+										target.style.color = 'var(--color-surface-lowest)'
 									}
 								}}
 								onMouseLeave={(e) => {
 									const target = e.target as HTMLButtonElement
 									if (excalidrawAPI) {
-										target.style.background = theme === 'dark' ? '#059669' : '#10b981'
+										target.style.backgroundColor = 'var(--color-surface-mid)'
+										target.style.color = 'var(--color-primary)'
 									}
 								}}
 							>
@@ -484,27 +610,27 @@ export default function Home() {
 					zIndex: 2000
 				}}>
 					<div style={{
-						background: theme === 'dark' ? '#1f2937' : '#ffffff',
+						background: 'var(--color-surface-lowest)',
 						borderRadius: '8px',
 						padding: '24px',
-						boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+						boxShadow: '0px 100px 80px rgba(0, 0, 0, 0.07), 0px 41.7776px 33.4221px rgba(0, 0, 0, 0.0503198), 0px 22.3363px 17.869px rgba(0, 0, 0, 0.0417275), 0px 12.5216px 10.0172px rgba(0, 0, 0, 0.035), 0px 6.6501px 5.32008px rgba(0, 0, 0, 0.0282725), 0px 2.76726px 2.21381px rgba(0, 0, 0, 0.0196802)',
 						minWidth: '400px',
 						maxWidth: '500px'
 					}}>
 						<h3 style={{
 							margin: '0 0 16px 0',
-							color: theme === 'dark' ? '#f9fafb' : '#111827',
+							color: 'var(--color-on-surface)',
 							fontSize: '20px',
 							fontWeight: '600'
 						}}>
-							Name Your Drawing
+							{currentDrawing ? 'Update Drawing' : 'Name Your Drawing'}
 						</h3>
 
 						<div style={{ marginBottom: '16px' }}>
 							<label style={{
 								display: 'block',
 								marginBottom: '8px',
-								color: theme === 'dark' ? '#f9fafb' : '#374151',
+								color: 'var(--color-on-surface)',
 								fontSize: '14px',
 								fontWeight: '500'
 							}}>
@@ -519,10 +645,10 @@ export default function Home() {
 								style={{
 									width: '100%',
 									padding: '12px',
-									border: `1px solid ${theme === 'dark' ? '#4b5563' : '#d1d5db'}`,
+									border: `1px solid var(--color-border-outline)`,
 									borderRadius: '6px',
-									background: theme === 'dark' ? '#374151' : '#ffffff',
-									color: theme === 'dark' ? '#f9fafb' : '#111827',
+									background: 'var(--color-surface-mid)',
+									color: 'var(--color-on-surface)',
 									fontSize: '14px',
 									boxSizing: 'border-box'
 								}}
@@ -540,10 +666,10 @@ export default function Home() {
 							<div style={{
 								marginBottom: '16px',
 								padding: '8px 12px',
-								background: '#fef2f2',
-								border: '1px solid #fecaca',
+								background: 'var(--color-danger-background)',
+								border: `1px solid var(--color-danger)`,
 								borderRadius: '4px',
-								color: '#dc2626',
+								color: 'var(--color-danger)',
 								fontSize: '14px'
 							}}>
 								{saveDialogError}
@@ -559,9 +685,9 @@ export default function Home() {
 								onClick={cancelSaveDialog}
 								style={{
 									padding: '8px 16px',
-									background: theme === 'dark' ? '#374151' : '#f3f4f6',
-									color: theme === 'dark' ? '#f9fafb' : '#374151',
-									border: `1px solid ${theme === 'dark' ? '#4b5563' : '#d1d5db'}`,
+									background: 'var(--color-surface-mid)',
+									color: 'var(--color-on-surface)',
+									border: `1px solid var(--color-border-outline)`,
 									borderRadius: '6px',
 									cursor: 'pointer',
 									fontSize: '14px'
@@ -574,8 +700,8 @@ export default function Home() {
 								disabled={!drawingName.trim() || isSaving}
 								style={{
 									padding: '8px 16px',
-									background: '#3b82f6',
-									color: '#fff',
+									background: 'var(--color-primary)',
+									color: 'var(--color-surface-lowest)',
 									border: 'none',
 									borderRadius: '6px',
 									cursor: (!drawingName.trim() || isSaving) ? 'not-allowed' : 'pointer',
@@ -583,7 +709,7 @@ export default function Home() {
 									opacity: (!drawingName.trim() || isSaving) ? 0.5 : 1
 								}}
 							>
-								{isSaving ? 'Saving...' : 'Save Drawing'}
+								{isSaving ? 'Saving...' : (currentDrawing ? 'Update Drawing' : 'Save Drawing')}
 							</button>
 						</div>
 					</div>

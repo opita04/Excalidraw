@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       drawingData = JSON.parse(textContent)
     } catch (parseError) {
       console.error('load-drawing: Failed to parse JSON:', parseError)
-      throw new Error(`Invalid JSON data in drawing file: ${parseError.message}`)
+      throw new Error(`Invalid JSON data in drawing file: ${parseError instanceof Error ? parseError.message : 'Parse error'}`)
     }
 
     // Validate the drawing data structure

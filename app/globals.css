@@ -16,23 +16,81 @@ body {
   box-sizing: border-box;
 }
 
-/* Theme variables for dark/light mode */
+/* Theme variables matching old Excalidraw app */
 :root {
   --bg-primary: #ffffff;
-  --bg-secondary: #f9fafb;
-  --text-primary: #111827;
-  --text-secondary: #6b7280;
-  --border-color: #e5e7eb;
-  --button-bg: #3b82f6;
-  --button-hover: #2563eb;
+  --bg-secondary: #f6f6f9;
+  --bg-tertiary: #ececf4;
+  --text-primary: #1b1b1f;
+  --text-secondary: #7a7a7a;
+  --border-color: #b8b8b8;
+  --button-bg: #6965db;
+  --button-hover: #5753d0;
+  --nav-bg: #ffffff;
+  --nav-border: #b8b8b8;
+
+  /* Old app color palette */
+  --color-primary: #6965db;
+  --color-primary-darker: #5b57d1;
+  --color-primary-darkest: #4a47b1;
+  --color-primary-light: #e3e2fe;
+  --color-primary-light-darker: #d7d5ff;
+  --color-primary-hover: #5753d0;
+  --color-surface-high: #f1f0ff;
+  --color-surface-mid: #f6f6f9;
+  --color-surface-low: #ececf4;
+  --color-surface-lowest: #ffffff;
+  --color-on-surface: #1b1b1f;
+  --color-brand-hover: #5753d0;
+  --color-border-outline: #767680;
+  --color-gray-10: #f5f5f5;
+  --color-gray-20: #ebebeb;
+  --color-gray-30: #d6d6d6;
+  --color-gray-40: #b8b8b8;
+  --color-gray-50: #999999;
+  --color-gray-60: #7a7a7a;
+  --color-gray-70: #5c5c5c;
+  --color-gray-80: #3d3d3d;
+  --color-danger: #dc2626;
+  --color-danger-background: #fef2f2;
 }
 
 [data-theme="dark"] {
-  --bg-primary: #1f2937;
-  --bg-secondary: #374151;
-  --text-primary: #f9fafb;
-  --text-secondary: #9ca3af;
-  --border-color: #4b5563;
-  --button-bg: #3b82f6;
-  --button-hover: #1e40af;
+  --bg-primary: #121212;
+  --bg-secondary: hsl(240 6% 10%);
+  --bg-tertiary: hsl(240, 8%, 15%);
+  --text-primary: #e3e3e8;
+  --text-secondary: #b8b8b8;
+  --border-color: #8e8d9c;
+  --button-bg: #a8a5ff;
+  --button-hover: #bbb8ff;
+  --nav-bg: #232329;
+  --nav-border: #8e8d9c;
+
+  /* Dark theme color palette from old app */
+  --color-primary: #a8a5ff;
+  --color-primary-darker: #b2aeff;
+  --color-primary-darkest: #beb9ff;
+  --color-primary-light: #4f4d6f;
+  --color-primary-light-darker: #43415e;
+  --color-primary-hover: #bbb8ff;
+  --color-surface-high: #2e2d39;
+  --color-surface-low: hsl(240, 8%, 15%);
+  --color-surface-mid: hsl(240 6% 10%);
+  --color-surface-lowest: hsl(0, 0%, 7%);
+  --color-on-surface: #e3e3e8;
+  --color-brand-hover: #bbb8ff;
+  --color-border-outline: #8e8d9c;
+  --color-gray-10: hsl(0, 0%, 7%);
+  --color-gray-20: hsl(240 6% 10%);
+  --color-gray-30: hsl(240, 8%, 15%);
+  --color-gray-40: #8e8d9c;
+  --color-gray-50: #b8b8b8;
+  --color-gray-60: #d6d6d6;
+  --color-gray-70: #ebebeb;
+  --color-gray-80: #f5f5f5;
+  --color-danger: #ef4444;
+  --color-danger-background: #451a1a;
 }
+
+/* Let Excalidraw manage its own palette and component theming. */
