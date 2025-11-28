@@ -64,10 +64,19 @@ export default function Home() {
 		}
 
 		// Clear current drawing if scene becomes empty (e.g., after Reset)
-		if (Array.isArray(elements) && elements.length === 0 && currentDrawing) {
-			setCurrentDrawing(null)
+		// Use a callback to get the current value to avoid stale closure issues
+		// Also add a small delay to handle potential race conditions
+		if (Array.isArray(elements) && elements.length === 0) {
+			setTimeout(() => {
+				setCurrentDrawing(prevDrawing => {
+					if (prevDrawing) {
+						return null
+					}
+					return prevDrawing
+				})
+			}, 100) // Small delay to handle race conditions
 		}
-	}, [theme, isMounted, excalidrawAPI, currentDrawing])
+	}, [theme, isMounted])
 
 	// Manual theme toggle function
 	const toggleTheme = useCallback(() => {
@@ -96,8 +105,26 @@ export default function Home() {
 	}, [theme, excalidrawAPI, isMounted])
 
 	useEffect(() => {
-		// Basic diagnostics to confirm mount
-		console.log('ExcalidrawAPI set?', Boolean(excalidrawAPI))
+		// Set up periodic check for empty canvas when API is available
+		if (excalidrawAPI) {
+			const checkCanvasEmpty = () => {
+				const elements = excalidrawAPI.getSceneElements()
+				if (Array.isArray(elements) && elements.length === 0) {
+					setCurrentDrawing(prevDrawing => {
+						if (prevDrawing) {
+							return null
+						}
+						return prevDrawing
+					})
+				}
+			}
+			
+			// Check immediately and then periodically
+			checkCanvasEmpty()
+			const interval = setInterval(checkCanvasEmpty, 1000) // Check every second
+			
+			return () => clearInterval(interval)
+		}
 	}, [excalidrawAPI])
 
 	const showSaveDrawingDialog = useCallback(() => {

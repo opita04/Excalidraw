@@ -162,8 +162,8 @@ export default function DrawingList({ theme, onLoadDrawing, onDrawingDeleted, on
       ) : (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-          gap: '20px'
+          gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
+          gap: '24px'
         }}>
           {drawings.map((drawing) => (
             <div key={drawing.url} style={{
@@ -174,17 +174,46 @@ export default function DrawingList({ theme, onLoadDrawing, onDrawingDeleted, on
               boxShadow: '0px 0px 0.9310142993927002px 0px rgba(0, 0, 0, 0.17), 0px 0px 3.1270833015441895px 0px rgba(0, 0, 0, 0.08), 0px 7px 14px 0px rgba(0, 0, 0, 0.05)',
               transition: 'transform 0.2s ease, box-shadow 0.2s ease'
             }}>
-              {/* Drawing Preview Placeholder */}
+              {/* Drawing Preview */}
               <div style={{
-                height: '150px',
+                height: '200px',
                 background: 'var(--color-surface-mid)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: 'var(--color-gray-50)',
-                fontSize: '14px'
+                overflow: 'hidden'
               }}>
-                🎨 Drawing Preview
+                <img
+                  src={`/api/drawing-thumbnail?url=${encodeURIComponent(drawing.url)}`}
+                  alt={`${drawing.name} preview`}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain',
+                    borderRadius: '4px'
+                  }}
+                  onError={(e) => {
+                    // Fallback to placeholder if thumbnail fails to load
+                    const target = e.target as HTMLImageElement
+                    target.style.display = 'none'
+                    const parent = target.parentElement
+                    if (parent) {
+                      parent.innerHTML = `
+                        <div style="
+                          display: flex;
+                          align-items: center;
+                          justify-content: center;
+                          color: var(--color-gray-50);
+                          font-size: 14px;
+                          width: 100%;
+                          height: 100%;
+                        ">
+                          🎨 Preview unavailable
+                        </div>
+                      `
+                    }
+                  }}
+                />
               </div>
 
               {/* Drawing Info */}
