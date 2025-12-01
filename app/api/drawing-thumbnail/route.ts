@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { head } from '@vercel/blob'
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,11 +13,24 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Fetch the drawing data
+    // Verify blob exists first
+    try {
+      await head(url)
+    } catch (headError) {
+      // Continue even if head fails, try fetch anyway
+    }
+
+    // Fetch the drawing data with authorization if available
+    const fetchHeaders: HeadersInit = {
+      'Accept': 'application/json',
+    }
+
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      fetchHeaders['Authorization'] = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`
+    }
+
     const response = await fetch(url, {
-      headers: {
-        'Accept': 'application/json',
-      }
+      headers: fetchHeaders
     })
 
     if (!response.ok) {

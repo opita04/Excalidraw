@@ -3,13 +3,8 @@ import { list } from '@vercel/blob'
 
 export async function GET() {
   try {
-    console.log('list-drawings: Checking environment variables...')
-    console.log('BLOB_READ_WRITE_TOKEN exists:', Boolean(process.env.BLOB_READ_WRITE_TOKEN))
-    console.log('BLOB_READ_WRITE_TOKEN value:', process.env.BLOB_READ_WRITE_TOKEN?.substring(0, 10) + '...')
-
     // Check if blob token is available
     if (!process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN === 'placeholder_token_for_local_dev') {
-      console.log('list-drawings: Blob token not configured properly')
       return NextResponse.json(
         {
           error: 'Blob storage not configured',
@@ -19,7 +14,6 @@ export async function GET() {
         { status: 503 }
       )
     }
-
 
     // List all blobs in the store
     const { blobs } = await list()
@@ -33,7 +27,6 @@ export async function GET() {
         uploadedAt: blob.uploadedAt || new Date().toISOString(),
       }))
       .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
-
 
     return NextResponse.json(drawings)
   } catch (error) {
